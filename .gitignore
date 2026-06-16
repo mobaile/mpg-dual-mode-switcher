@@ -1,0 +1,14 @@
+.DS_Store
+dist/
+build/
+*.zip
+*.app/
+DerivedData/
+.build/
+.swiftpm/
+xcuserdata/
+*.xcuserstate
+.claude/
+AGENTS.md
+CLAUDE.md
+.gitnexus
