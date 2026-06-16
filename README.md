@@ -47,10 +47,11 @@ Build the app:
 ./scripts/build.sh
 ```
 
-The built app and zip archive are written to `dist/`.
+The built app, zip archive, and a standalone diagnostic helper are written to `dist/`.
 
 ## Notes
 
 - The app is intentionally not sandboxed because it needs direct USB HID access.
 - The app is ad-hoc signed by the build script for local use.
+- The UI reads the monitor directly in-process; `dist/mpg-dual-mode-helper` is only for terminal diagnostics.
 - This is a hardware-specific utility and is not expected to work with unrelated MSI monitor models.

@@ -6,6 +6,8 @@
   <string>zh_CN</string>
   <key>CFBundleExecutable</key>
   <string>MPG Dual Mode Switcher</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>CFBundleIdentifier</key>
   <string>local.codex.mpg-dual-mode-switcher</string>
   <key>CFBundleInfoDictionaryVersion</key>

@@ -55,27 +55,22 @@ private struct MonitorSnapshot {
 private enum MSIController {
     static func readSnapshot(retries: Int = 2) -> MonitorSnapshot {
         var bestValues: [String: String] = [:]
-        var launched = false
 
         for attempt in 0...retries {
             if attempt > 0 {
                 Thread.sleep(forTimeInterval: 0.45)
             }
 
-            guard let output = runHelper(arguments: ["read"]) else {
-                continue
-            }
+            let status = MSIHID.readStatus()
+            let values = status.values
 
-            launched = true
-            let values = parseKeyValues(output)
-
-            if values["connected"] == "1" {
+            if status.connected {
                 bestValues["connected"] = "1"
             } else if bestValues["connected"] == nil {
-                bestValues["connected"] = values["connected"]
+                bestValues["connected"] = "0"
             }
 
-            for key in ["002E0", "00190"] {
+            for key in [MSIHID.modeRegister, MSIHID.confirmationRegister] {
                 guard let value = values[key] else { continue }
                 if value != "NO_RESPONSE" || bestValues[key] == nil {
                     bestValues[key] = value
@@ -83,26 +78,16 @@ private enum MSIController {
             }
 
             if bestValues["connected"] == "1",
-               bestValues["002E0"] != nil,
-               bestValues["002E0"] != "NO_RESPONSE",
-               bestValues["00190"] != nil,
-               bestValues["00190"] != "NO_RESPONSE" {
+               bestValues[MSIHID.modeRegister] != nil,
+               bestValues[MSIHID.modeRegister] != "NO_RESPONSE",
+               bestValues[MSIHID.confirmationRegister] != nil,
+               bestValues[MSIHID.confirmationRegister] != "NO_RESPONSE" {
                 break
             }
         }
 
-        guard launched else {
-            return MonitorSnapshot(
-                connected: false,
-                mode: .unknown,
-                raw002E0: "-",
-                raw00190: "-",
-                message: "读取失败，无法启动 HID helper"
-            )
-        }
-
-        let raw002E0 = bestValues["002E0"] ?? "NO_RESPONSE"
-        let raw00190 = bestValues["00190"] ?? "NO_RESPONSE"
+        let raw002E0 = bestValues[MSIHID.modeRegister] ?? "NO_RESPONSE"
+        let raw00190 = bestValues[MSIHID.confirmationRegister] ?? "NO_RESPONSE"
         let connected = bestValues["connected"] == "1"
         let mode = decodeMode(raw002E0: raw002E0, raw00190: raw00190)
 
@@ -120,47 +105,7 @@ private enum MSIController {
             return false
         }
 
-        return runHelper(arguments: ["set", value]) != nil
-    }
-
-    private static func runHelper(arguments: [String]) -> String? {
-        let helperURL = Bundle.main.bundleURL
-            .appendingPathComponent("Contents")
-            .appendingPathComponent("MacOS")
-            .appendingPathComponent("mpg-dual-mode-helper")
-
-        let process = Process()
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        process.executableURL = helperURL
-        process.arguments = arguments
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            return nil
-        }
-
-        let stdout = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let stderr = errorPipe.fileHandleForReading.readDataToEndOfFile()
-        let combined = stdout + stderr
-        guard process.terminationStatus == 0 || !combined.isEmpty else {
-            return nil
-        }
-        return String(data: combined, encoding: .utf8)
-    }
-
-    private static func parseKeyValues(_ output: String) -> [String: String] {
-        var values: [String: String] = [:]
-        for line in output.split(whereSeparator: \.isNewline) {
-            let parts = line.split(separator: "=", maxSplits: 1).map(String.init)
-            guard parts.count == 2 else { continue }
-            values[parts[0]] = parts[1]
-        }
-        return values
+        return MSIHID.setModeValue(value)
     }
 
     private static func decodeMode(raw002E0: String, raw00190: String) -> DualMode {
